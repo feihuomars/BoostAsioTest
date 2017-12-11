@@ -37,7 +37,7 @@ struct CHelloWorld_Service
 		
 		psocket->async_read_some(buffer(buf),
 			boost::bind(&CHelloWorld_Service::read_handler, this, boost::asio::placeholders::error, psocket));
-		std::cout << buf << std::endl;
+		
 		psocket->async_write_some(buffer(*pstr),
 			boost::bind(&CHelloWorld_Service::write_handler, this, pstr, _1, _2));
 	}
