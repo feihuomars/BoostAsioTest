@@ -11,10 +11,10 @@ using boost::system::error_code;
 
 struct CHelloWorld_Service
 {
-	CHelloWorld_Service(io_service &iosev, char &buf)
+	CHelloWorld_Service(io_service &iosev)
 		:m_iosev(iosev), m_acceptor(iosev, tcp::endpoint(tcp::v4(), 1000))
 	{
-		&bufWrite = buf;
+		
 	}
 
 	void start()
@@ -45,21 +45,54 @@ struct CHelloWorld_Service
 	}
 
 	// 异步写操作完成后write_handler触发
-	void write_handler( error_code ec)
+	void write_handler( error_code ec, boost::shared_ptr<tcp::socket> psocket)
 	{
 		if (ec)
 			std::cout << "发送失败!" << std::endl;
 		else
-			std::cout << " 已发送"  << std::endl;
+		{
+			std::cout << " 已发送" << std::endl;
+			psocket->async_write_some(buffer("电子科技大学"),
+				boost::bind(&CHelloWorld_Service::write_handler2, this, boost::asio::placeholders::error, psocket));
+		}
 	}
+
+	void write_handler2(error_code ec, boost::shared_ptr<tcp::socket> psocket)
+	{
+		if (ec)
+			std::cout << "发送失败!" << std::endl;
+		else
+		{
+			std::cout << "成功进入handle2" << std::endl;
+			for (int i = 0; i < 102400; i++) {
+				bufWrite[i] = 'a';
+			}
+
+			psocket->async_write_some(buffer(bufWrite),
+				boost::bind(&CHelloWorld_Service::write_handler3, this, boost::asio::placeholders::error, psocket));
+			
+		}
+	}
+
+	void write_handler3(error_code ec, boost::shared_ptr<tcp::socket> psocket)
+	{
+		if (ec)
+			std::cout << "缓存发送失败!" << std::endl;
+		else
+		{
+			std::cout << " 缓存已发送" << std::endl;
+			
+		}
+	}
+
 
 	void read_handler( error_code errorCode, boost::shared_ptr<tcp::socket> psocket) {
 		if (errorCode)
 			std::cout << "接收失败!" << std::endl;
 		else {
 			std::cout << " 已接收： " << bufRead << std::endl;
-			psocket->async_write_some(buffer(bufWrite),
-				boost::bind(&CHelloWorld_Service::write_handler, this, _1));
+			psocket->async_write_some(buffer("2017-11-11"),
+				boost::bind(&CHelloWorld_Service::write_handler, this, boost::asio::placeholders::error, psocket));
 		}
 			
 	}
@@ -68,7 +101,7 @@ private:
 	io_service &m_iosev;
 	ip::tcp::acceptor m_acceptor;
 	char bufRead[128];
-	char bufWrite[1024];
+	char bufWrite[102400];
 };
 
 
