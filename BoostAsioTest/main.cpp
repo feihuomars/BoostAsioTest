@@ -52,7 +52,7 @@ struct CHelloWorld_Service
 		else
 		{
 			std::cout << " 已发送" << std::endl;
-			psocket->async_write_some(buffer("电子科技大学"),
+			psocket->async_write_some(buffer("UESTC"),
 				boost::bind(&CHelloWorld_Service::write_handler2, this, boost::asio::placeholders::error, psocket));
 		}
 	}
@@ -64,7 +64,7 @@ struct CHelloWorld_Service
 		else
 		{
 			std::cout << "成功进入handle2" << std::endl;
-			for (int i = 0; i < 102400; i++) {
+			for (int i = 0; i < 1024; i++) {
 				bufWrite[i] = 'a';
 			}
 
@@ -101,7 +101,7 @@ private:
 	io_service &m_iosev;
 	ip::tcp::acceptor m_acceptor;
 	char bufRead[128];
-	char bufWrite[102400];
+	char bufWrite[1024];
 };
 
 
