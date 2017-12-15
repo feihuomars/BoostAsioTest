@@ -93,6 +93,16 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
         if (m_outputFile.tellp() >= static_cast<std::streamsize>(m_fileSize)) {
 			//接收完成位置
             std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << m_data << std::endl;
+			auto self = shared_from_this();
+			string = "来自服务器的返回信息";
+			m_socket.async_write_some(boost::asio::buffer(string), [this, self](boost::system::error_code ec, size_t bytes) {
+				if (ec) {
+					std::cout << "extra infromaion failed" << std::endl;
+				}
+				else {
+					std::cout << "extra informaiton success " << "size: " << bytes << std::endl;
+				}
+			});
             return;
         }
     }
