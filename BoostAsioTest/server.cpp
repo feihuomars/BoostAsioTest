@@ -93,7 +93,7 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
         if (m_outputFile.tellp() >= static_cast<std::streamsize>(m_fileSize)) {
 			//接收完成位置
             std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << m_data << std::endl;
-			auto self = shared_from_this();
+			/*auto self = shared_from_this();
 			string = "来自服务器的返回信息";
 			m_socket.async_write_some(boost::asio::buffer(string), [this, self](boost::system::error_code ec, size_t bytes) {
 				if (ec) {
@@ -102,7 +102,25 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 				else {
 					std::cout << "extra informaiton success " << "size: " << bytes << std::endl;
 				}
-			});
+			});*/
+			const char* str = "data from server";
+			memcpy(m_bufToClient.data(), str, 16);
+			auto buf = boost::asio::buffer(m_bufToClient.data(), static_cast<size_t>(m_sourceFile.gcount()));
+			
+			//openFile("D://test/test.txt");
+			//writeBuffer(m_request);
+
+			//std::ostream requestStream(&m_request);
+			//requestStream << "from server" ;
+
+			//boost::asio::async_write(m_socket,
+			//	m_request,
+			//	[this](boost::system::error_code ec, size_t /*length*/)
+			//{
+			//	
+			//});
+
+
             return;
         }
     }
@@ -120,6 +138,59 @@ void Session::handleError(std::string const& t_functionName, boost::system::erro
     /*BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << " in " << t_functionName << " due to " 
         << t_ec << " " << t_ec.message() << std::endl;*/
 }
+
+void Session::openFile(std::string const& t_path)
+{
+	m_sourceFile.open(t_path, std::ios_base::binary | std::ios_base::ate);
+	if (m_sourceFile.fail()) {
+		//throw std::fstream::failure("Failed while opening file " + t_path);
+		std::cout << "Failed while opening file " + t_path << std::endl;
+	}
+
+
+	m_sourceFile.seekg(0, m_sourceFile.end);
+	auto fileSize = m_sourceFile.tellg();
+	m_sourceFile.seekg(0, m_sourceFile.beg);
+
+	std::ostream requestStream(&m_request);
+	boost::filesystem::path p(t_path);
+	size_t number = 20172222;
+	//requestStream << p.filename().string() << "\n" << fileSize << "\n\n";
+	requestStream << p.filename().string() << "\n" << fileSize << "\n" << "data" << "\n\n";
+	//BOOST_LOG_TRIVIAL(trace) << "Request size: " << m_request.size();
+}
+
+void Session::doWriteFile(const boost::system::error_code& t_ec)
+{
+	if (!t_ec) {
+		if (m_sourceFile) {
+			m_sourceFile.read(m_bufToClient.data(), m_bufToClient.size());
+			if (m_sourceFile.fail() && !m_sourceFile.eof()) {
+				auto msg = "Failed while reading file";
+				//BOOST_LOG_TRIVIAL(error) << msg;
+				throw std::fstream::failure(msg);
+			}
+			std::stringstream ss;
+			ss << "Send " << m_sourceFile.gcount() << " bytes, total: "
+				<< m_sourceFile.tellg() << " bytes";
+			// BOOST_LOG_TRIVIAL(trace) << ss.str();
+			std::cout << ss.str() << std::endl;
+
+			auto buf = boost::asio::buffer(m_bufToClient.data(), static_cast<size_t>(m_sourceFile.gcount()));
+			writeBuffer(buf);
+		}
+		else {
+			//发送完成位置
+			std::cout << "send file completed." << std::endl;
+			
+		}
+	}
+	else {
+		//BOOST_LOG_TRIVIAL(error) << "Error: " << t_ec.message();
+	}
+}
+
+
 
 
 Server::Server(boost::asio::io_service& t_ioService, short t_port, std::string const& t_workDirectory)

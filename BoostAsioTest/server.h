@@ -28,6 +28,12 @@ private:
     void doReadFileContent(size_t t_bytesTransferred);
     void handleError(std::string const& t_functionName, boost::system::error_code const& t_ec);
 
+	//回传客户端所需函数
+	void openFile(std::string const& t_path);
+	void doWriteFile(const boost::system::error_code& t_ec);
+	template<typename Buffer>
+	void writeBuffer(Buffer& t_buffer);
+
 
     TcpSocket m_socket;
     enum { MaxLength = 40960 };
@@ -38,7 +44,35 @@ private:
 	std::string m_data;
     std::string m_fileName;
 	std::string string;
+
+	//回传给客户端所需变量
+	enum { MessageSize = 1024 };
+	std::array<char, MessageSize> m_bufToClient;
+	boost::asio::streambuf m_request;
+	std::ifstream m_sourceFile;
+	std::string m_path;
+
+
 };
+
+template<typename Buffer>
+void Session::writeBuffer(Buffer& t_buffer)
+{
+	boost::asio::async_write(m_socket,
+		t_buffer,
+		[this](boost::system::error_code ec, size_t /*length*/)
+	{
+		//doWriteFile(ec);
+		/*if (ec) {
+			std::cout << "send data failed" << std::endl;
+		}
+		else {
+			std::cout << "send data success" << std::endl;
+		}*/
+	});
+}
+
+
 
 
 class Server
