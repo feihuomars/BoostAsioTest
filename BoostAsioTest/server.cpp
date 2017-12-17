@@ -113,12 +113,12 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 			//std::ostream requestStream(&m_request);
 			//requestStream << "from server" ;
 
-			//boost::asio::async_write(m_socket,
-			//	m_request,
-			//	[this](boost::system::error_code ec, size_t /*length*/)
-			//{
-			//	
-			//});
+			boost::asio::async_write(m_socket,
+				m_request,
+				[this](boost::system::error_code ec, size_t /*length*/)
+			{
+				
+			});
 
 
             return;
