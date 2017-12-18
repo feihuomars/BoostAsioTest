@@ -48,10 +48,11 @@ private:
 	//回传给客户端所需变量
 	enum { MessageSize = 1024 };
 	std::array<char, MessageSize> m_bufToClient;
+	std::array<char, 1024> m_string;
 	boost::asio::streambuf m_request;
 	std::ifstream m_sourceFile;
 	std::string m_path;
-
+	
 
 };
 
@@ -62,13 +63,14 @@ void Session::writeBuffer(Buffer& t_buffer)
 		t_buffer,
 		[this](boost::system::error_code ec, size_t /*length*/)
 	{
-		//doWriteFile(ec);
-		/*if (ec) {
+		if (ec) {
 			std::cout << "send data failed" << std::endl;
 		}
 		else {
 			std::cout << "send data success" << std::endl;
-		}*/
+		}
+		doWriteFile(ec);
+		
 	});
 }
 

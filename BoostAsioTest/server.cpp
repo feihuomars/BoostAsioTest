@@ -103,22 +103,26 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 					std::cout << "extra informaiton success " << "size: " << bytes << std::endl;
 				}
 			});*/
-			const char* str = "data from server";
-			memcpy(m_bufToClient.data(), str, 16);
-			auto buf = boost::asio::buffer(m_bufToClient.data(), static_cast<size_t>(m_sourceFile.gcount()));
-			
-			//openFile("D://test/test.txt");
-			//writeBuffer(m_request);
 
+			const char* str = "data from server\nhello";
+			
+			std::string string = " data from server";
+			string += "";
+			memcpy(m_bufToClient.data(), string.c_str(), 1024);
+			auto buf = boost::asio::buffer(m_bufToClient.data(), m_bufToClient.size());
+			
+			openFile("D://test/test.txt");
+			//writeBuffer(m_request);
+			m_request.consume(m_request.size());
 			//std::ostream requestStream(&m_request);
 			//requestStream << "from server" ;
 
-			boost::asio::async_write(m_socket,
-				m_request,
-				[this](boost::system::error_code ec, size_t /*length*/)
-			{
-				
-			});
+			//boost::asio::async_write(m_socket,
+			//	buf,
+			//	[this](boost::system::error_code ec, size_t /*length*/)
+			//{
+			//	
+			//});
 
 
             return;
@@ -158,17 +162,30 @@ void Session::openFile(std::string const& t_path)
 	//requestStream << p.filename().string() << "\n" << fileSize << "\n\n";
 	requestStream << p.filename().string() << "\n" << fileSize << "\n" << "data" << "\n\n";
 	//BOOST_LOG_TRIVIAL(trace) << "Request size: " << m_request.size();
+	std::stringstream ss;
+	ss << fileSize;
+	std::string string = "";
+	string = p.filename().string() + "\n" + ss.str() + "\n" + "data" + "\n\n";
+	memcpy(m_string.data(), string.c_str(), 1024);
+	auto self = shared_from_this();
+	boost::asio::async_write(m_socket, 
+		boost::asio::buffer(m_string.data(), m_string.size()),
+		[this, self] (boost::system::error_code ec, size_t){
+		doWriteFile(ec);
+	});
+
 }
 
 void Session::doWriteFile(const boost::system::error_code& t_ec)
 {
 	if (!t_ec) {
-		if (m_sourceFile) {
+		//改为同步操作
+		while (m_sourceFile) {
 			m_sourceFile.read(m_bufToClient.data(), m_bufToClient.size());
 			if (m_sourceFile.fail() && !m_sourceFile.eof()) {
 				auto msg = "Failed while reading file";
 				//BOOST_LOG_TRIVIAL(error) << msg;
-				throw std::fstream::failure(msg);
+				//throw std::fstream::failure(msg);
 			}
 			std::stringstream ss;
 			ss << "Send " << m_sourceFile.gcount() << " bytes, total: "
@@ -177,13 +194,17 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 			std::cout << ss.str() << std::endl;
 
 			auto buf = boost::asio::buffer(m_bufToClient.data(), static_cast<size_t>(m_sourceFile.gcount()));
-			writeBuffer(buf);
+			//writeBuffer(buf);
+			
+			boost::system::error_code error_code;
+			boost::asio::write(m_socket, buf, error_code);
+
 		}
-		else {
+		
 			//发送完成位置
 			std::cout << "send file completed." << std::endl;
 			
-		}
+		
 	}
 	else {
 		//BOOST_LOG_TRIVIAL(error) << "Error: " << t_ec.message();
@@ -227,5 +248,5 @@ void Server::createWorkDirectory()
 		//BOOST_LOG_TRIVIAL(error) << "Coudn't create working directory: " << m_workDirectory;
 	}
         
-    current_path(currentPath);
+	current_path(currentPath);
 }

@@ -151,7 +151,7 @@ int main(int argc, char* argv[])
 	server.run();*/
 
 	boost::asio::io_service ioService;
-	Server server(ioService, 1000, "D://test/recv");
+	Server server(ioService, 1000, "D://test/serverRecv");
 	ioService.run();
 
 
