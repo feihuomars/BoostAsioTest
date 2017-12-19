@@ -103,15 +103,15 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 					std::cout << "extra informaiton success " << "size: " << bytes << std::endl;
 				}
 			});*/
-
+			Sleep(10000);
 			const char* str = "data from server\nhello";
 			
 			std::string string = " data from server";
 			string += "";
-			memcpy(m_bufToClient.data(), string.c_str(), 1024);
-			auto buf = boost::asio::buffer(m_bufToClient.data(), m_bufToClient.size());
+			//memcpy(m_bufToClient.data(), string.c_str(), 1024);
+			//auto buf = boost::asio::buffer(m_bufToClient.data(), m_bufToClient.size());
 			
-			openFile("D://test/test.txt");
+			openFile("D://test/picture.jpg");
 			//writeBuffer(m_request);
 			m_request.consume(m_request.size());
 			//std::ostream requestStream(&m_request);
@@ -166,10 +166,10 @@ void Session::openFile(std::string const& t_path)
 	ss << fileSize;
 	std::string string = "";
 	string = p.filename().string() + "\n" + ss.str() + "\n" + "data" + "\n\n";
-	memcpy(m_string.data(), string.c_str(), 1024);
+	memcpy(m_string.data(), string.c_str(), m_string.size());
 	auto self = shared_from_this();
 	boost::asio::async_write(m_socket, 
-		boost::asio::buffer(m_string.data(), m_string.size()),
+		m_request,
 		[this, self] (boost::system::error_code ec, size_t){
 		doWriteFile(ec);
 	});
@@ -180,6 +180,7 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 {
 	if (!t_ec) {
 		//改为同步操作
+		std::cout << "已发送字符串： " << m_string.data() << "大小： " << m_string.size() << std::endl;
 		while (m_sourceFile) {
 			m_sourceFile.read(m_bufToClient.data(), m_bufToClient.size());
 			if (m_sourceFile.fail() && !m_sourceFile.eof()) {
@@ -188,8 +189,8 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 				//throw std::fstream::failure(msg);
 			}
 			std::stringstream ss;
-			ss << "Send " << m_sourceFile.gcount() << " bytes, total: "
-				<< m_sourceFile.tellg() << " bytes";
+			ss << "Send " << m_sourceFile.gcount() << " bytes,   total: "
+				<< m_sourceFile.tellg() << " bytes" /*<< "   content: " <<m_bufToClient.data()*/;
 			// BOOST_LOG_TRIVIAL(trace) << ss.str();
 			std::cout << ss.str() << std::endl;
 
