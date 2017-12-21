@@ -41,7 +41,7 @@ private:
     boost::asio::streambuf m_requestBuf_;
     std::ofstream m_outputFile;
     size_t m_fileSize;
-	std::string m_data;
+	std::string startTime;
     std::string m_fileName;
 	std::string string;
 

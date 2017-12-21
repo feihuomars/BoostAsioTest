@@ -29,9 +29,9 @@ void Session::doRead()
 
 void Session::processRead(size_t t_bytesTransferred)
 {
-    /*BOOST_LOG_TRIVIAL(trace) << __FUNCTION__ << "(" << t_bytesTransferred << ")" 
+    std::cout << __FUNCTION__ << "(" << t_bytesTransferred << ")" 
         << ", in_avail = " << m_requestBuf_.in_avail() << ", size = " 
-        << m_requestBuf_.size() << ", max_size = " << m_requestBuf_.max_size() << ".";*/
+        << m_requestBuf_.size() << ", max_size = " << m_requestBuf_.max_size() << "." << std::endl;
 
     std::istream requestStream(&m_requestBuf_);
     readData(requestStream);
@@ -45,7 +45,7 @@ void Session::processRead(size_t t_bytesTransferred)
     // write extra bytes to file
     do {
         requestStream.read(m_buf.data(), m_buf.size());
-        //BOOST_LOG_TRIVIAL(trace) << __FUNCTION__ << " write " << requestStream.gcount() << " bytes.";
+        std::cout << __FUNCTION__ << " write " << requestStream.gcount() << " bytes." << std::endl;
         m_outputFile.write(m_buf.data(), requestStream.gcount());
     } while (requestStream.gcount() > 0);
 
@@ -65,11 +65,11 @@ void Session::readData(std::istream &stream)
 {
     stream >> m_fileName;
     stream >> m_fileSize;
-	stream >> m_data;
+	stream >> startTime;
     stream.read(m_buf.data(), 2);
 
-    /*BOOST_LOG_TRIVIAL(trace) << m_fileName << " size is " << m_fileSize
-        << ", tellg = " << stream.tellg();*/
+    std::cout << m_fileName << " size is " << m_fileSize
+        << ", tellg = " << stream.tellg() << std::endl;
 }
 
 
@@ -77,7 +77,7 @@ void Session::createFile()
 {
     m_outputFile.open(m_fileName, std::ios_base::binary);
     if (!m_outputFile) {
-        //BOOST_LOG_TRIVIAL(error) << __LINE__ << ": Failed to create: " << m_fileName;
+        std::cout << __LINE__ << ": Failed to create: " << m_fileName << std::endl;
         return;
     }
 }
@@ -88,43 +88,18 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
     if (t_bytesTransferred > 0) {
         m_outputFile.write(m_buf.data(), static_cast<std::streamsize>(t_bytesTransferred));
 
-        //BOOST_LOG_TRIVIAL(trace) << __FUNCTION__ << " recv " << m_outputFile.tellp() << " bytes";
+        std::cout << __FUNCTION__ << " recv " << m_outputFile.tellp() << " bytes" << std::endl;
 
         if (m_outputFile.tellp() >= static_cast<std::streamsize>(m_fileSize)) {
 			//接收完成位置
-            std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << m_data << std::endl;
-			/*auto self = shared_from_this();
-			string = "来自服务器的返回信息";
-			m_socket.async_write_some(boost::asio::buffer(string), [this, self](boost::system::error_code ec, size_t bytes) {
-				if (ec) {
-					std::cout << "extra infromaion failed" << std::endl;
-				}
-				else {
-					std::cout << "extra informaiton success " << "size: " << bytes << std::endl;
-				}
-			});*/
-			Sleep(10000);
-			const char* str = "data from server\nhello";
+            std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << "startTime: "<< startTime << std::endl;
 			
-			std::string string = " data from server";
-			string += "";
-			//memcpy(m_bufToClient.data(), string.c_str(), 1024);
-			//auto buf = boost::asio::buffer(m_bufToClient.data(), m_bufToClient.size());
+			Sleep(10000);
 			
 			openFile("D://test/picture.jpg");
 			//writeBuffer(m_request);
 			m_request.consume(m_request.size());
-			//std::ostream requestStream(&m_request);
-			//requestStream << "from server" ;
-
-			//boost::asio::async_write(m_socket,
-			//	buf,
-			//	[this](boost::system::error_code ec, size_t /*length*/)
-			//{
-			//	
-			//});
-
-
+			
             return;
         }
     }
@@ -139,8 +114,8 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 
 void Session::handleError(std::string const& t_functionName, boost::system::error_code const& t_ec)
 {
-    /*BOOST_LOG_TRIVIAL(error) << __FUNCTION__ << " in " << t_functionName << " due to " 
-        << t_ec << " " << t_ec.message() << std::endl;*/
+    std::cout << __FUNCTION__ << " in " << t_functionName << " due to " 
+        << t_ec << " " << t_ec.message() << std::endl;
 }
 
 void Session::openFile(std::string const& t_path)
@@ -158,10 +133,9 @@ void Session::openFile(std::string const& t_path)
 
 	std::ostream requestStream(&m_request);
 	boost::filesystem::path p(t_path);
-	size_t number = 20172222;
-	//requestStream << p.filename().string() << "\n" << fileSize << "\n\n";
+	
 	requestStream << p.filename().string() << "\n" << fileSize << "\n" << "data" << "\n\n";
-	//BOOST_LOG_TRIVIAL(trace) << "Request size: " << m_request.size();
+	std::cout << "Request size: " << m_request.size() << std::endl;
 	std::stringstream ss;
 	ss << fileSize;
 	std::string string = "";
@@ -190,7 +164,7 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 			}
 			std::stringstream ss;
 			ss << "Send " << m_sourceFile.gcount() << " bytes,   total: "
-				<< m_sourceFile.tellg() << " bytes" /*<< "   content: " <<m_bufToClient.data()*/;
+				<< m_sourceFile.tellg() << " bytes";
 			// BOOST_LOG_TRIVIAL(trace) << ss.str();
 			std::cout << ss.str() << std::endl;
 
