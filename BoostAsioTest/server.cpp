@@ -3,6 +3,8 @@
 #include <boost/asio/read_until.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/log/trivial.hpp>
+#include <boost/thread/thread.hpp>
+#include <thread>
 
 #include "server.h"
 
@@ -10,6 +12,7 @@
 Session::Session(TcpSocket t_socket)
     : m_socket(std::move(t_socket))
 {
+	//doRead();
 }
 
 
@@ -66,6 +69,8 @@ void Session::readData(std::istream &stream)
     stream >> m_fileName;
     stream >> m_fileSize;
 	stream >> startTime;
+	stream >> endTime;
+	stream >> pictureID;
     stream.read(m_buf.data(), 2);
 
     std::cout << m_fileName << " size is " << m_fileSize
@@ -92,13 +97,15 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 
         if (m_outputFile.tellp() >= static_cast<std::streamsize>(m_fileSize)) {
 			//接收完成位置
-            std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << "startTime: "<< startTime << std::endl;
+            std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << "\n startTime: "<< startTime 
+				<< "\n endTime: " << endTime << "\n pictureID: " << pictureID << boost::filesystem::current_path().string() << std::endl;
 			
-			Sleep(10000);
+			Sleep(3000);
 			
+			resultPos = "电子科技大学";
+			resultTime = "2018-01-01*01:01:01";
 			openFile("D://test/picture.jpg");
 			//writeBuffer(m_request);
-			m_request.consume(m_request.size());
 			
             return;
         }
@@ -120,13 +127,14 @@ void Session::handleError(std::string const& t_functionName, boost::system::erro
 
 void Session::openFile(std::string const& t_path)
 {
+	//打开文件
 	m_sourceFile.open(t_path, std::ios_base::binary | std::ios_base::ate);
 	if (m_sourceFile.fail()) {
 		//throw std::fstream::failure("Failed while opening file " + t_path);
 		std::cout << "Failed while opening file " + t_path << std::endl;
 	}
 
-
+	//文件指针移至末尾确定文件大小
 	m_sourceFile.seekg(0, m_sourceFile.end);
 	auto fileSize = m_sourceFile.tellg();
 	m_sourceFile.seekg(0, m_sourceFile.beg);
@@ -134,7 +142,8 @@ void Session::openFile(std::string const& t_path)
 	std::ostream requestStream(&m_request);
 	boost::filesystem::path p(t_path);
 	
-	requestStream << p.filename().string() << "\n" << fileSize << "\n" << "data" << "\n\n";
+	requestStream << p.filename().string() << "\n" << fileSize << "\n" << 
+		resultPos << "\n" << resultTime << "\n" << pictureID << "\n\n";
 	std::cout << "Request size: " << m_request.size() << std::endl;
 	std::stringstream ss;
 	ss << fileSize;
@@ -159,13 +168,13 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 			m_sourceFile.read(m_bufToClient.data(), m_bufToClient.size());
 			if (m_sourceFile.fail() && !m_sourceFile.eof()) {
 				auto msg = "Failed while reading file";
-				//BOOST_LOG_TRIVIAL(error) << msg;
+				std::cout << msg << std::endl;
 				//throw std::fstream::failure(msg);
 			}
 			std::stringstream ss;
 			ss << "Send " << m_sourceFile.gcount() << " bytes,   total: "
 				<< m_sourceFile.tellg() << " bytes";
-			// BOOST_LOG_TRIVIAL(trace) << ss.str();
+			
 			std::cout << ss.str() << std::endl;
 
 			auto buf = boost::asio::buffer(m_bufToClient.data(), static_cast<size_t>(m_sourceFile.gcount()));
@@ -182,7 +191,7 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 		
 	}
 	else {
-		//BOOST_LOG_TRIVIAL(error) << "Error: " << t_ec.message();
+		std::cout << "Error: " << t_ec.message() << std::endl;
 	}
 }
 
@@ -192,35 +201,57 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 Server::Server(boost::asio::io_service& t_ioService, short t_port, std::string const& t_workDirectory)
     : m_socket(t_ioService),
     m_acceptor(t_ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), t_port)),
-    m_workDirectory(t_workDirectory)
+    m_workDirectory(t_workDirectory), m_ioservice(t_ioService)
 {
     std::cout << "Server started\n";
-
+	
     createWorkDirectory();
 
     doAccept();
 }
 
+void startThread(boost::asio::ip::tcp::socket socket) {
+	std::make_shared<Session>(std::move(socket))->start();
+	
+}
 
 void Server::doAccept()
 {
     m_acceptor.async_accept(m_socket,
         [this](boost::system::error_code ec)
     {
-        if (!ec)
-            std::make_shared<Session>(std::move(m_socket))->start();
-
+		if (!ec) {
+			//startThread(std::move(m_socket));
+			std::thread(startThread, std::move(m_socket)).join();
+			boost::asio::io_service::work work(m_ioservice);
+			//m_ioservice.run();
+			//std::make_shared<Session>(std::move(m_socket))->start();
+			//Session session(std::move(m_socket));
+			//session.start();
+		}
+		
         doAccept();
     });
+
+	/*while (true) {
+		boost::system::error_code ec;
+		m_acceptor.accept(m_socket, ec);
+		if (ec) {
+			std::cout << ec.message() << std::endl;
+		}
+		std::make_shared<Session>(std::move(m_socket))->start();
+		Session session(m_socket);
+	}*/
+	
 }
 
 
 void Server::createWorkDirectory()
 {
-    using namespace boost::filesystem;
-    auto currentPath = path(m_workDirectory);
+	//设置当前工作目录
+    auto currentPath = boost::filesystem::path(m_workDirectory);
 	if (!exists(currentPath) && !create_directory(currentPath)) {
-		//BOOST_LOG_TRIVIAL(error) << "Coudn't create working directory: " << m_workDirectory;
+		std::cout << "Coudn't create working directory: " << m_workDirectory << std::endl;
 	}
         
 	current_path(currentPath);

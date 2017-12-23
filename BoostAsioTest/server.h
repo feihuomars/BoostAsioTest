@@ -13,7 +13,7 @@ class Session
 public:
     using TcpSocket = boost::asio::ip::tcp::socket;
 
-    Session(TcpSocket t_socket);
+	Session(TcpSocket t_socket);
 
     void start()
     {
@@ -27,7 +27,7 @@ private:
     void readData(std::istream &stream);
     void doReadFileContent(size_t t_bytesTransferred);
     void handleError(std::string const& t_functionName, boost::system::error_code const& t_ec);
-
+	
 	//回传客户端所需函数
 	void openFile(std::string const& t_path);
 	void doWriteFile(const boost::system::error_code& t_ec);
@@ -41,9 +41,12 @@ private:
     boost::asio::streambuf m_requestBuf_;
     std::ofstream m_outputFile;
     size_t m_fileSize;
-	std::string startTime;
+	
     std::string m_fileName;
 	std::string string;
+	std::string startTime;
+	std::string endTime;
+	std::string pictureID;
 
 	//回传给客户端所需变量
 	enum { MessageSize = 1024 };
@@ -52,8 +55,8 @@ private:
 	boost::asio::streambuf m_request;
 	std::ifstream m_sourceFile;
 	std::string m_path;
-	
-
+	std::string resultPos;
+	std::string resultTime;
 };
 
 template<typename Buffer>
@@ -85,13 +88,15 @@ public:
     using IoService = boost::asio::io_service;
 
     Server(IoService& t_ioService, short t_port, std::string const& t_workDirectory);
-
+	
 private:
     void doAccept();
     void createWorkDirectory();
+	
 
     TcpSocket m_socket;
     TcpAcceptor m_acceptor;
-
+	boost::asio::io_service& m_ioservice;
     std::string m_workDirectory;
+	
 };
