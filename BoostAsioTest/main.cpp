@@ -10,6 +10,16 @@ using namespace boost::asio;
 using ip::tcp;
 using boost::system::error_code;
 
+void test2(int& a) {
+	std::cout << a << std::endl;
+}
+
+void test(int& a) {
+	std::cout << a << std::endl;
+	test2(a);
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -17,10 +27,11 @@ int main(int argc, char* argv[])
 
 	boost::asio::io_service ioService;
 	Server server(ioService, 1000, "D:/test/serverRecv");
-	//boost::asio::io_service::work work(ioService);
-
 	ioService.run();
 
+	int a = 10;
+
+	test(a);
 
 	return 0;
 }

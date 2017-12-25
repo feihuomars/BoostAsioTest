@@ -141,15 +141,17 @@ void Session::openFile(std::string const& t_path)
 
 	std::ostream requestStream(&m_request);
 	boost::filesystem::path p(t_path);
-	
+	//需要返回的信息
 	requestStream << p.filename().string() << "\n" << fileSize << "\n" << 
 		resultPos << "\n" << resultTime << "\n" << pictureID << "\n\n";
 	std::cout << "Request size: " << m_request.size() << std::endl;
+	
 	std::stringstream ss;
 	ss << fileSize;
 	std::string string = "";
 	string = p.filename().string() + "\n" + ss.str() + "\n" + "data" + "\n\n";
 	memcpy(m_string.data(), string.c_str(), m_string.size());
+	
 	auto self = shared_from_this();
 	boost::asio::async_write(m_socket, 
 		m_request,
@@ -163,7 +165,7 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 {
 	if (!t_ec) {
 		//改为同步操作
-		std::cout << "已发送字符串： " << m_string.data() << "大小： " << m_string.size() << std::endl;
+		std::cout << "开始发送文件" << std::endl;
 		while (m_sourceFile) {
 			m_sourceFile.read(m_bufToClient.data(), m_bufToClient.size());
 			if (m_sourceFile.fail() && !m_sourceFile.eof()) {
@@ -175,7 +177,7 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 			ss << "Send " << m_sourceFile.gcount() << " bytes,   total: "
 				<< m_sourceFile.tellg() << " bytes";
 			
-			std::cout << ss.str() << std::endl;
+			//std::cout << ss.str() << std::endl;
 
 			auto buf = boost::asio::buffer(m_bufToClient.data(), static_cast<size_t>(m_sourceFile.gcount()));
 			//writeBuffer(buf);
@@ -185,8 +187,8 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 
 		}
 		
-			//发送完成位置
-			std::cout << "send file completed." << std::endl;
+		//发送完成位置
+		std::cout << "文件发送完毕" << std::endl;
 			
 		
 	}
@@ -198,50 +200,51 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 
 
 
-Server::Server(boost::asio::io_service& t_ioService, short t_port, std::string const& t_workDirectory)
+Server::Server(IoService& t_ioService, short t_port, std::string const& t_workDirectory)
     : m_socket(t_ioService),
     m_acceptor(t_ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), t_port)),
-    m_workDirectory(t_workDirectory), m_ioservice(t_ioService)
+    m_workDirectory(t_workDirectory),
+	m_ioservice(t_ioService)
 {
     std::cout << "Server started\n";
 	
     createWorkDirectory();
 
     doAccept();
+	
 }
 
-void startThread(boost::asio::ip::tcp::socket socket) {
+void Server::startThread(boost::asio::ip::tcp::socket socket) {
 	std::make_shared<Session>(std::move(socket))->start();
 	
 }
 
 void Server::doAccept()
 {
-    m_acceptor.async_accept(m_socket,
-        [this](boost::system::error_code ec)
-    {
-		if (!ec) {
-			//startThread(std::move(m_socket));
-			std::thread(startThread, std::move(m_socket)).join();
-			boost::asio::io_service::work work(m_ioservice);
-			//m_ioservice.run();
-			//std::make_shared<Session>(std::move(m_socket))->start();
-			//Session session(std::move(m_socket));
-			//session.start();
-		}
-		
-        doAccept();
-    });
+  //  m_acceptor.async_accept(m_socket,
+  //      [this](boost::system::error_code ec)
+  //  {
+		//if (!ec) {
+		//	
+		//	//std::make_shared<Session>(std::move(m_socket))->start();
+		//	//boost::shared_ptr<boost::asio::io_service> ioServicePtr;
+		//	//std::thread(boost::bind(&boost::asio::io_service::run, &m_ioservice)).join();
+		//	//std::make_shared<Session>(std::move(m_socket))->start();
+		//	std::thread(startThread, std::move(m_socket)).join();
+		//}
+		//
+  //      doAccept();
+  //  });
 
-	/*while (true) {
+	while (true) {
 		boost::system::error_code ec;
 		m_acceptor.accept(m_socket, ec);
 		if (ec) {
 			std::cout << ec.message() << std::endl;
 		}
-		std::make_shared<Session>(std::move(m_socket))->start();
-		Session session(m_socket);
-	}*/
+		std::thread(startThread, std::move(m_socket)).join();
+		
+	}
 	
 }
 

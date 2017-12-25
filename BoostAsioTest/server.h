@@ -92,7 +92,7 @@ public:
 private:
     void doAccept();
     void createWorkDirectory();
-	
+	static void startThread(boost::asio::ip::tcp::socket socket);
 
     TcpSocket m_socket;
     TcpAcceptor m_acceptor;
