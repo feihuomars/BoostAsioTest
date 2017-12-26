@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 #include <boost/asio.hpp>
-
+#include <boost/thread/thread.hpp>
 
 class Session
     : public std::enable_shared_from_this<Session>
@@ -88,15 +88,19 @@ public:
     using IoService = boost::asio::io_service;
 
     Server(IoService& t_ioService, short t_port, std::string const& t_workDirectory);
-	
+	void run_ioService();
+
 private:
     void doAccept();
     void createWorkDirectory();
 	static void startThread(boost::asio::ip::tcp::socket socket);
+	
 
     TcpSocket m_socket;
     TcpAcceptor m_acceptor;
 	boost::asio::io_service& m_ioservice;
     std::string m_workDirectory;
 	
+	std::shared_ptr<boost::thread> m_ios_thread;
+	std::shared_ptr<boost::asio::io_service::work> m_work;
 };

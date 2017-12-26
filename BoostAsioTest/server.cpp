@@ -18,6 +18,7 @@ Session::Session(TcpSocket t_socket)
 
 void Session::doRead()
 {
+	std::cout << "进入读取函数" << std::endl;
     auto self = shared_from_this();
     async_read_until(m_socket, m_requestBuf_, "\n\n",
         [this, self](boost::system::error_code ec, size_t bytes)
@@ -32,6 +33,7 @@ void Session::doRead()
 
 void Session::processRead(size_t t_bytesTransferred)
 {
+	std::cout << "进入数据处理函数" << std::endl;
     std::cout << __FUNCTION__ << "(" << t_bytesTransferred << ")" 
         << ", in_avail = " << m_requestBuf_.in_avail() << ", size = " 
         << m_requestBuf_.size() << ", max_size = " << m_requestBuf_.max_size() << "." << std::endl;
@@ -221,30 +223,32 @@ void Server::startThread(boost::asio::ip::tcp::socket socket) {
 
 void Server::doAccept()
 {
-  //  m_acceptor.async_accept(m_socket,
-  //      [this](boost::system::error_code ec)
-  //  {
-		//if (!ec) {
-		//	
-		//	//std::make_shared<Session>(std::move(m_socket))->start();
-		//	//boost::shared_ptr<boost::asio::io_service> ioServicePtr;
-		//	//std::thread(boost::bind(&boost::asio::io_service::run, &m_ioservice)).join();
-		//	//std::make_shared<Session>(std::move(m_socket))->start();
-		//	std::thread(startThread, std::move(m_socket)).join();
-		//}
-		//
-  //      doAccept();
-  //  });
+    m_acceptor.async_accept(m_socket,
+        [this](boost::system::error_code ec)
+    {
+		if (!ec) {
+			
+			std::make_shared<Session>(std::move(m_socket))->start();
+			//boost::shared_ptr<boost::asio::io_service> ioServicePtr;
+			//std::thread(boost::bind(&boost::asio::io_service::run, &m_ioservice)).join();
+			//std::make_shared<Session>(std::move(m_socket))->start();
+			//std::thread(startThread, std::move(m_socket)).join();
+		}
+		
+        doAccept();
+    });
 
-	while (true) {
+	/*while (true) {
 		boost::system::error_code ec;
+		
 		m_acceptor.accept(m_socket, ec);
 		if (ec) {
 			std::cout << ec.message() << std::endl;
 		}
-		std::thread(startThread, std::move(m_socket)).join();
+		std::cout << "开启新线程" << std::endl;
+		std::thread(startThread, std::move(m_socket)).detach();
 		
-	}
+	}*/
 	
 }
 
@@ -258,4 +262,12 @@ void Server::createWorkDirectory()
 	}
         
 	current_path(currentPath);
+}
+
+void Server::run_ioService() {
+	/*boost::asio::io_service::work work(m_ioservice);
+	boost::thread thrd(boost::bind(&boost::asio::io_service::run, boost::ref(m_ioservice)));*/
+
+	m_work.reset(new boost::asio::io_service::work(m_ioservice));
+	m_ios_thread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioservice)));
 }

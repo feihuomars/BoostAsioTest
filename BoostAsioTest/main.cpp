@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
 	boost::asio::io_service ioService;
 	Server server(ioService, 1000, "D:/test/serverRecv");
 	ioService.run();
-
+	//server.run_ioService();
 	int a = 10;
 
 	test(a);
