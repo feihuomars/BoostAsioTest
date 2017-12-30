@@ -7,7 +7,9 @@
 #include <thread>
 
 #include "server.h"
+#include "mysql.h"
 
+const std::string recvDirectory = "D:/test/serverRecv/";
 
 Session::Session(TcpSocket t_socket)
     : m_socket(std::move(t_socket))
@@ -82,7 +84,8 @@ void Session::readData(std::istream &stream)
 
 void Session::createFile()
 {
-    m_outputFile.open(m_fileName, std::ios_base::binary);
+	std::string filePath = "D:/test/serverRecv";
+    m_outputFile.open(filePath + m_fileName, std::ios_base::binary);
     if (!m_outputFile) {
         std::cout << __LINE__ << ": Failed to create: " << m_fileName << std::endl;
         return;
@@ -100,13 +103,19 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
         if (m_outputFile.tellp() >= static_cast<std::streamsize>(m_fileSize)) {
 			//接收完成位置
             std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << "\n startTime: "<< startTime 
-				<< "\n endTime: " << endTime << "\n pictureID: " << pictureID << boost::filesystem::current_path().string() << std::endl;
-			
+				<< "\n endTime: " << endTime << "\n pictureID: " << pictureID << std::endl;
+			mysqlDatabase mdb;
+			mdb.query_insert(pictureID, recvDirectory + m_fileName, startTime, endTime);
+
 			Sleep(3000);
-			
-			resultPos = "电子科技大学";
-			resultTime = "2018-01-01*01:01:01";
-			openFile("D://test/picture.jpg");
+
+			//从数据库中取出数据并赋值给返回变量
+			mdb.position_retrieve();
+			mdb.result_retrieve();
+			resultPos = mdb.position_result;
+			appearTime = mdb.result_results[2].replace(10, 1, "*");		//取出时间格式化空格换“*”
+			disappearTime = mdb.result_results[3].replace(10, 1, "*");
+			openFile(mdb.result_results[1]);
 			//writeBuffer(m_request);
 			
             return;
@@ -145,7 +154,7 @@ void Session::openFile(std::string const& t_path)
 	boost::filesystem::path p(t_path);
 	//需要返回的信息
 	requestStream << p.filename().string() << "\n" << fileSize << "\n" << 
-		resultPos << "\n" << resultTime << "\n" << pictureID << "\n\n";
+		resultPos << "\n" << appearTime << "\n" << disappearTime << "\n" << pictureID << "\n\n";
 	std::cout << "Request size: " << m_request.size() << std::endl;
 	
 	std::stringstream ss;
@@ -261,7 +270,7 @@ void Server::createWorkDirectory()
 		std::cout << "Coudn't create working directory: " << m_workDirectory << std::endl;
 	}
         
-	current_path(currentPath);
+	//current_path(currentPath);
 }
 
 void Server::run_ioService() {

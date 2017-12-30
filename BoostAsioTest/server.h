@@ -56,7 +56,8 @@ private:
 	std::ifstream m_sourceFile;
 	std::string m_path;
 	std::string resultPos;
-	std::string resultTime;
+	std::string appearTime;	//人脸出现时间
+	std::string disappearTime; //人脸消失时间
 };
 
 template<typename Buffer>
