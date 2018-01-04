@@ -7,6 +7,8 @@
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 
+
+
 class Session
     : public std::enable_shared_from_this<Session>
 {

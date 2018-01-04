@@ -1,10 +1,16 @@
 #include <iostream>
 
+#include <WinSock2.h>	//为保证引用Windows.h头文件
+#include <windows.h>
+
 #include <boost/asio/read_until.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/thread/thread.hpp>
+
+
 #include <thread>
+
 
 #include "server.h"
 #include "mysql.h"
@@ -107,7 +113,9 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 			mysqlDatabase mdb;
 			mdb.query_insert(pictureID, recvDirectory + m_fileName, startTime, endTime);
 
+			//此处执行外部exe程序
 			Sleep(3000);
+			ShellExecute(NULL, L"open", L"D:/test/vs2015test.exe", NULL, NULL, SW_SHOWNORMAL);
 
 			//从数据库中取出数据并赋值给返回变量
 			mdb.position_retrieve();
