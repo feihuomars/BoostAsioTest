@@ -1,9 +1,11 @@
-#pragma once
+//#pragma once
+#pragma execution_character_set("utf-8")
 
 #include <array>
 #include <fstream>
 #include <string>
 #include <memory>
+#include <io.h>
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
 
@@ -38,17 +40,17 @@ private:
 
 
     TcpSocket m_socket;
+	//接收所需变量
     enum { MaxLength = 40960 };
     std::array<char, MaxLength> m_buf;
     boost::asio::streambuf m_requestBuf_;
     std::ofstream m_outputFile;
     size_t m_fileSize;
-	
     std::string m_fileName;
-	std::string string;
 	std::string startTime;
 	std::string endTime;
 	std::string pictureID;
+	std::string errorCode;
 
 	//回传给客户端所需变量
 	enum { MessageSize = 1024 };

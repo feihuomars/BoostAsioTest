@@ -104,7 +104,7 @@ bool mysqlDatabase::log_insert(string imgpath) {
 //将检索指令插入到query表中
 bool mysqlDatabase::query_insert(string pic_id,string pic_path, string begin_time, string end_time) {
 	
-	sqlstr = "insert into query(pic_id, pic_path, begin_time, end_time) values('" + pic_id + "', '" + pic_path + "', str_to_date('" + begin_time + "','%Y-%m-%d*%H:%i:%s'), str_to_date('" + end_time + "','%Y-%m-%d*%H:%i:%s'));";
+	sqlstr = "insert into query(pic_id, pic_path, begin_time, end_time) values('" + pic_id + "', '" + pic_path + "', str_to_date('" + begin_time + "','%Y-%m-%d-%H:%i:%s'), str_to_date('" + end_time + "','%Y-%m-%d-%H:%i:%s'));";
 	if (0 == mysql_query(&mydata, sqlstr.c_str())) {
 		cout << "mysql_query() insert data succeed" << endl;
 		return true;
