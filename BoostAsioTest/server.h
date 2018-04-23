@@ -31,7 +31,9 @@ private:
     void readData(std::istream &stream);
     void doReadFileContent(size_t t_bytesTransferred);
     void handleError(std::string const& t_functionName, boost::system::error_code const& t_ec);
-	
+	void createProcess();
+	void findResultPicPath(std::string& resultPicPath);
+
 	//回传客户端所需函数
 	void openFile(std::string const& t_path);
 	void doWriteFile(const boost::system::error_code& t_ec);
@@ -51,6 +53,7 @@ private:
 	std::string endTime;
 	std::string pictureID;
 	std::string errorCode;
+	std::string zipCode;
 
 	//回传给客户端所需变量
 	enum { MessageSize = 1024 };
@@ -92,19 +95,16 @@ public:
     using TcpAcceptor = boost::asio::ip::tcp::acceptor;
     using IoService = boost::asio::io_service;
 
-    Server(IoService& t_ioService, short t_port, std::string const& t_workDirectory);
+    Server(IoService& t_ioService, short t_port);
 	void run_ioService();
 
 private:
     void doAccept();
-    void createWorkDirectory();
 	static void startThread(boost::asio::ip::tcp::socket socket);
 	
-
     TcpSocket m_socket;
     TcpAcceptor m_acceptor;
 	boost::asio::io_service& m_ioservice;
-    std::string m_workDirectory;
 	
 	std::shared_ptr<boost::thread> m_ios_thread;
 	std::shared_ptr<boost::asio::io_service::work> m_work;

@@ -7,10 +7,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/thread/thread.hpp>
-
-
 #include <thread>
-
 
 #include "server.h"
 #include "mysql.h"
@@ -60,9 +57,6 @@ void Session::processRead(size_t t_bytesTransferred)
         m_outputFile.write(m_buf.data(), requestStream.gcount());
     } while (requestStream.gcount() > 0);
 
-	if (pictureID == "233") {
-		cout << "pictureID correct" << endl;
-	}
 
 	//此处开始接收文件
     auto self = shared_from_this();
@@ -85,6 +79,7 @@ void Session::readData(std::istream &stream)
 	stream >> endTime;
 	stream >> pictureID;
 	stream >> errorCode;
+	stream >> zipCode;
     stream.read(m_buf.data(), 2);
 
     std::cout << m_fileName << " size is " << m_fileSize
@@ -94,7 +89,6 @@ void Session::readData(std::istream &stream)
 
 void Session::createFile()
 {
-	std::string filePath = "./serverRecv/";
     m_outputFile.open(recvDirectory + m_fileName, std::ios_base::binary);
     if (!m_outputFile) {
         std::cout << __LINE__ << ": Failed to create: " << m_fileName << std::endl;
@@ -102,6 +96,73 @@ void Session::createFile()
     }
 }
 
+//调用外部程序
+void Session::createProcess() {
+	if (errorCode == "0") {
+		DWORD dwExitCode;
+		LPCWSTR lpAppName = L"./facedetect.exe";
+		PROCESS_INFORMATION pi;
+		STARTUPINFO si;
+		memset(&si, 0, sizeof(si));
+		si.cb = sizeof(si);
+		si.wShowWindow = SW_SHOWNORMAL;
+		si.dwFlags = STARTF_USESHOWWINDOW;
+		//此处创建子进程
+		bool fRet = CreateProcess(lpAppName, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
+		if (fRet) {
+			cout << "exe successfully called" << endl;
+			WaitForSingleObject(pi.hProcess, INFINITE);		//等待子进程执行结束
+			GetExitCodeProcess(pi.hProcess, &dwExitCode);
+			CloseHandle(pi.hThread);
+			CloseHandle(pi.hProcess);
+			cout << "exe finish" << dwExitCode << endl;
+		}
+		else {
+			cout << "exe creation fails" << endl;
+		}
+	}
+}
+
+void Session::findResultPicPath(string& resultPicPath) {
+	std::string resultDir = "./topface/";
+	std::string searchDir = resultDir + "*.*";
+	//std::string resultPicPath;
+	intptr_t handle;
+	_finddata_t findData;
+	handle = _findfirst(searchDir.c_str(), &findData);
+	if (handle == -1)
+	{
+		cout << "Failed to find first file!\n";
+		return;
+	}
+	do
+	{
+		if (findData.attrib & _A_SUBDIR
+			&& strcmp(findData.name, ".") == 0
+			&& strcmp(findData.name, "..") == 0
+			)    // 是否是子目录并且不为"."或".."
+			cout << findData.name << "\t<dir>\n";
+		else {
+			//cout << findData.name << "\t" << findData.size << endl;
+			std::string tempFileName = findData.name;
+			if (tempFileName.substr(0, 1) == errorCode) {
+				size_t offset = tempFileName.find("_");
+				std::string tempAppearTime = tempFileName.substr(offset + 1, 19);
+				std::string tempDisappearTime = tempFileName.substr(offset + 21, 19);
+				resultPicPath = resultDir + tempFileName;
+				appearTime = tempAppearTime.replace(13, 1, ":");		//字符串的格式化处理"-"换":"
+				appearTime = appearTime.replace(16, 1, ":");
+				disappearTime = tempDisappearTime.replace(13, 1, ":");
+				disappearTime = disappearTime.replace(16, 1, ":");
+			}
+		}
+
+	} while (_findnext(handle, &findData) == 0);    // 查找目录中的下一个文件
+
+	cout << "Done!\n";
+	_findclose(handle);    // 关闭搜索句柄
+	
+}
 
 void Session::doReadFileContent(size_t t_bytesTransferred)
 {
@@ -113,7 +174,7 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
         if (m_outputFile.tellp() >= static_cast<std::streamsize>(m_fileSize)) {
 			//接收完成位置
             std::cout << "Received file: " << m_fileName << " size: " << m_fileSize << "\n startTime: "<< startTime 
-				<< "\n endTime: " << endTime << "\n pictureID: " << pictureID << "\n errorCode: " << errorCode << std::endl;
+				<< "\n endTime: " << endTime << "\n pictureID: " << pictureID << "\n errorCode: " << errorCode << "\n zipCode: " << zipCode << std::endl;
 			m_outputFile.close();
 			mysqlDatabase mdb;
 			mdb.query_insert(pictureID, recvDirectory + m_fileName, startTime, endTime);
@@ -121,30 +182,9 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 			/*
 			*	此处执行外部exe程序
 			*/
-			if (errorCode == "0") {
-				DWORD dwExitCode;
-				LPCWSTR lpAppName = L"./facedetect.exe";
-				PROCESS_INFORMATION pi;
-				STARTUPINFO si;
-				memset(&si, 0, sizeof(si));
-				si.cb = sizeof(si);
-				si.wShowWindow = SW_SHOWNORMAL;
-				si.dwFlags = STARTF_USESHOWWINDOW;
-				//此处创建子进程
-				bool fRet = CreateProcess(lpAppName, NULL, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi);
-				if (fRet) {
-					cout << "exe successfully called" << endl;
-					WaitForSingleObject(pi.hProcess, INFINITE);		//等待子进程执行结束
-					GetExitCodeProcess(pi.hProcess, &dwExitCode);
-					CloseHandle(pi.hThread);
-					CloseHandle(pi.hProcess);
-					cout << "exe finish" << dwExitCode << endl;
-				}
-				else {
-					cout << "exe creation fails" << endl;
-				}
-			}
 			
+			createProcess();
+
 			//Sleep(15000);
 			//从数据库中取出数据并赋值给返回变量
 			//mdb.position_retrieve();
@@ -170,46 +210,11 @@ void Session::doReadFileContent(size_t t_bytesTransferred)
 			//writeBuffer(m_request);
 			
 			/*
-			*遍历文件夹找到文件的方式
+			*遍历文件夹找到第一张图片
 			*/
-			
-			std::string resultDir = "./topface/";
-			std::string searchDir = resultDir + "*.*";
 			std::string resultPicPath;
-			intptr_t handle;
-			_finddata_t findData;
-			handle = _findfirst(searchDir.c_str(), &findData);
-			if (handle == -1)
-			{
-				cout << "Failed to find first file!\n";
-				return;
-			}
-			do
-			{
-				if (findData.attrib & _A_SUBDIR
-					&& strcmp(findData.name, ".") == 0
-					&& strcmp(findData.name, "..") == 0
-					)    // 是否是子目录并且不为"."或".."
-					cout << findData.name << "\t<dir>\n";
-				else {
-					//cout << findData.name << "\t" << findData.size << endl;
-					std::string tempFileName = findData.name;
-					if (tempFileName.substr(0, 1) == errorCode) {
-						size_t offset = tempFileName.find("_");
-						std::string tempAppearTime = tempFileName.substr(offset + 1, 19);
-						std::string tempDisappearTime = tempFileName.substr(offset + 21, 19);
-						resultPicPath = resultDir + tempFileName;
-						appearTime = tempAppearTime.replace(13, 1, ":");		//字符串的格式化处理"-"换":"
-						appearTime = appearTime.replace(16, 1, ":");
-						disappearTime = tempDisappearTime.replace(13, 1, ":");
-						disappearTime = disappearTime.replace(16, 1, ":");
-					}
-				}
 
-			} while (_findnext(handle, &findData) == 0);    // 查找目录中的下一个文件
-
-			cout << "Done!\n";
-			_findclose(handle);    // 关闭搜索句柄
+			findResultPicPath(resultPicPath);
 
 			openFile(resultPicPath);
             return;
@@ -248,7 +253,7 @@ void Session::openFile(std::string const& t_path)
 	boost::filesystem::path p(t_path);
 	//需要返回的信息
 	requestStream << p.filename().string() << "\n" << fileSize << "\n" << 
-		resultPos << "\n" << appearTime << "\n" << disappearTime << "\n" << pictureID << "\n" << errorCode << "\n\n";
+		resultPos << "\n" << appearTime << "\n" << disappearTime << "\n" << pictureID << "\n" << errorCode << "\n" << zipCode << "\n\n";
 	std::cout << "Request size: " << m_request.size() << std::endl;
 	
 	std::stringstream ss;
@@ -305,16 +310,13 @@ void Session::doWriteFile(const boost::system::error_code& t_ec)
 
 
 
-Server::Server(IoService& t_ioService, short t_port, std::string const& t_workDirectory)
+Server::Server(IoService& t_ioService, short t_port)
     : m_socket(t_ioService),
     m_acceptor(t_ioService, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), t_port)),
-    m_workDirectory(t_workDirectory),
 	m_ioservice(t_ioService)
 {
     std::cout << "Server started\n";
 	
-    createWorkDirectory();
-
     doAccept();
 	
 }
@@ -353,18 +355,6 @@ void Server::doAccept()
 		
 	}*/
 	
-}
-
-
-void Server::createWorkDirectory()
-{
-	//设置当前工作目录
-    /*auto currentPath = boost::filesystem::path(m_workDirectory);
-	if (!exists(currentPath) && !create_directory(currentPath)) {
-		std::cout << "Coudn't create working directory: " << m_workDirectory << std::endl;
-	}*/
-        
-	//current_path(currentPath);
 }
 
 void Server::run_ioService() {
